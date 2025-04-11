@@ -1,0 +1,29 @@
+<h2>Админ-панель</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Пользователь</th>
+            <th>Кофе</th>
+            <th>Статус</th>
+            <th>Действие</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each orders}}
+        <tr>
+            <td>{{this.user.username}}</td>
+            <td>{{this.coffee}}</td>
+            <td>{{this.status}}</td>
+            <td>
+                <form action="/admin/{{this.cafe}}/order/{{this._id}}" method="POST">
+                    <select name="status">
+                        <option value="Принят" {{#if (eq this.status "Принят" )}}selected{{/if}}>Принят</option>
+                        <option value="Готов" {{#if (eq this.status "Готов" )}}selected{{/if}}>Готов</option>
+                    </select>
+                    <button type="submit">Обновить</button>
+                </form>
+            </td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>

@@ -1,0 +1,25 @@
+<h2>Доступные рецепты в {{cafe.name}}</h2>
+<p>Адрес: {{cafe.address}}</p>
+
+{{#if error}}
+<p style="color: red;">{{error}}</p>
+{{/if}}
+
+<ul>
+    {{#each availableRecipes}}
+    <li>
+        <h3>{{this.name}}</h3>
+        <p>Ингредиенты:</p>
+        <ul>
+            {{#each this.ingredients}}
+            <li>{{this.product.name}}: {{this.amount}} {{this.product.unit}}</li>
+            {{/each}}
+        </ul>
+        <form action="/order/{{../cafe._id}}" method="POST">
+            <input type="hidden" name="recipeId" value="{{this._id}}">
+            <button type="submit">Заказать</button>
+        </form>
+    </li>
+    {{/each}}
+</ul>
+<a href="/order">Вернуться к списку кофеен</a>

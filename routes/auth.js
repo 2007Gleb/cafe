@@ -109,9 +109,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Получение IP-адреса клиента
-        const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-
-        // Лог IP-адреса для отладки
+        const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
         console.log(`IP-адрес клиента: ${clientIp}`);
 
         // Если используется функция определения геолокации

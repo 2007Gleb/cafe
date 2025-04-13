@@ -4,19 +4,24 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
 const MongoStore = require('connect-mongo');
+const { engine } = require('express-handlebars');
+const { allowInsecurePrototypeAccess } = require('@handlebars/allow-prototype-access');
+const Handlebars = require('handlebars');
+const sendEmail = require('./utils/mailer'); // Модуль для отправки email
+
+// Модели
 const Product = require('./models/Product');
 const Cafe = require('./models/Cafe');
 const User = require('./models/User');
 const Order = require('./models/Order');
-const orderRoutes = require('./routes/orderRoutes'); // Маршруты для заказов
-const adminCafeRoutes = require('./routes/adminCafeRoutes'); // Импорт маршрутов
-const { engine } = require('express-handlebars');
-const { allowInsecurePrototypeAccess } = require('@handlebars/allow-prototype-access');
-const Handlebars = require('handlebars');
 
+// Маршруты
+const orderRoutes = require('./routes/orderRoutes');
+const adminCafeRoutes = require('./routes/adminCafeRoutes');
 const verifyRoutes = require('./routes/verify');
+const authRoutes = require('./routes/auth');
+
 const app = express(); // Инициализация приложения
-const authRoutes = require('./routes/auth'); // Импорт маршрутов авторизации
 
 // Строка подключения к MongoDB
 const mongoURL = 'mongodb+srv://Gleb:0171862901gB@cluster0.sdcfbnm.mongodb.net/coffee_shop?retryWrites=true&w=majority';
@@ -47,40 +52,43 @@ app.engine('hbs', engine({
     extname: 'hbs',
     defaultLayout: 'main',
     layoutsDir: path.join(__dirname, 'views', 'layouts'),
-    handlebars: allowInsecurePrototypeAccess(Handlebars) // Разрешение доступа к прототипам
+    handlebars: allowInsecurePrototypeAccess(Handlebars)
 }));
 app.set('view engine', 'hbs');
-app.set('trust proxy', true);
-
+app.set('trust proxy', true); // Доверие к proxy для получения IP-адреса
 
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
-// Настройка сессий
 
+// Настройка сессий
 app.use(
     session({
-        secret: 'aefc3b1e5f1c2ed9a0b3d4e9f7a1234b56789abcdef1234567890abcdef1234', // Уникальный секретный ключ
-        resave: false, // Не сохранять сессию, если она не изменялась
-        saveUninitialized: false, // Не сохранять пустые сессии
-        store: MongoStore.create({ mongoUrl: 'mongodb+srv://Gleb:0171862901gB@cluster0.sdcfbnm.mongodb.net/coffee_shop?retryWrites=true&w=majority' }), // Хранилище для сессий
+        secret: 'aefc3b1e5f1c2ed9a0b3d4e9f7a1234b56789abcdef1234567890abcdef1234',
+        resave: false,
+        saveUninitialized: false,
+        store: MongoStore.create({ mongoUrl: mongoURL }),
         cookie: {
-            maxAge: 24 * 60 * 60 * 1000, // 24 часа
-            httpOnly: true, // Запрет JavaScript доступ к cookies
+            maxAge: 24 * 60 * 60 * 1000,
+            httpOnly: true,
             secure: false, // Установите true при использовании HTTPS
         },
     })
 );
+
 // Middleware для передачи данных о пользователе в шаблоны
 app.use((req, res, next) => {
-    res.locals.user = req.session.user || null; // Доступ к данным пользователя в шаблонах
+    res.locals.user = req.session.user || null;
     next();
 });
+
+// Логирование запросов
 app.use((req, res, next) => {
     console.log(`Запрос: ${req.method} ${req.url}`);
     next();
 });
+
 // Middleware для проверки авторизации
 function isAuthenticated(req, res, next) {
     if (req.session.user) {
@@ -106,13 +114,11 @@ if (!Cafe || !Product || !User || !Order) {
 }
 
 // Маршрут главной страницы
-app.get('/', (req, res) => {
-    res.render('home', { title: 'Добро пожаловать в нашу сеть кофеен!' });
+app.get('/', async (req, res) => {
     try {
         // Получение IP-адреса клиента
         const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-
-        console.log(`IP-адрес клиента: ${clientIp}`); // Логирование IP-адреса в консоль
+        console.log(`IP-адрес клиента: ${clientIp}`);
 
         // Отправка письма с IP-адресом
         await sendEmail(
@@ -121,8 +127,8 @@ app.get('/', (req, res) => {
             `Пользователь зашел на страницу. Его IP-адрес: ${clientIp}`
         );
 
-        // Ответ пользователю
-        res.send('Ваш IP-адрес отправлен администратору.');
+        // Рендеринг главной страницы
+        res.render('home', { title: 'Добро пожаловать в нашу сеть кофеен!' });
     } catch (error) {
         console.error('Ошибка при отправке email:', error.message);
         res.status(500).send('Произошла ошибка на сервере.');
@@ -132,12 +138,12 @@ app.get('/', (req, res) => {
 // Маршрут получения списка кофеен
 app.get('/cafes', async (req, res) => {
     try {
-        const cafes = await Cafe.find().populate('products.product'); // Загрузка кофеен с продуктами
+        const cafes = await Cafe.find().populate('products.product');
 
         if (!cafes || cafes.length === 0) {
             console.warn('Кофейни не найдены');
         } else {
-            console.log('Кофейни:', cafes); // Логирование данных
+            console.log('Кофейни:', cafes);
         }
 
         res.render('cafes', { title: 'Наши кофейни', cafes });
@@ -147,19 +153,15 @@ app.get('/cafes', async (req, res) => {
     }
 });
 
-// Маршрут получения списка заказов (с учётом авторизации)
+// Маршрут получения списка заказов
 app.get('/orders', isAuthenticated, async (req, res) => {
     try {
-        const userId = req.session.user.id; // Получаем ID текущего пользователя
-
-        // Фильтруем заказы по пользователю
+        const userId = req.session.user.id;
         const orders = await Order.find({ user: userId })
-            .populate('cafe') // Подгружаем данные кофейни
-            .populate('products.product'); // Подгружаем данные продуктов (если нужно)
+            .populate('cafe')
+            .populate('products.product');
 
-        // Логируем заказы для проверки
         console.log(`Заказы пользователя ${userId}:`, JSON.stringify(orders, null, 2));
-
         res.render('orders', { title: 'Ваши заказы', orders });
     } catch (error) {
         console.error('Ошибка при получении заказов:', error.message);
@@ -175,8 +177,8 @@ app.get('/register', (req, res) => {
 app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
-
         const existingUser = await User.findOne({ username });
+
         if (existingUser) {
             return res.render('register', { title: 'Регистрация', error: 'Пользователь уже существует' });
         }
@@ -191,9 +193,6 @@ app.post('/register', async (req, res) => {
         res.render('register', { title: 'Регистрация', error: 'Ошибка при регистрации' });
     }
 });
-
-// Вход
-
 
 // Выход
 app.get('/logout', (req, res) => {
@@ -225,9 +224,10 @@ app.post('/admin/add-cafe', isAdmin, async (req, res) => {
 
 // Подключение маршрутов
 app.use('/', orderRoutes);
-app.use('/', adminCafeRoutes); // Подключение маршрутов
-app.use('/auth', authRoutes); // Подключение маршрутов с префиксом /auth
+app.use('/', adminCafeRoutes);
+app.use('/auth', authRoutes);
 app.use('/verify', verifyRoutes);
+
 // Запуск сервера
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

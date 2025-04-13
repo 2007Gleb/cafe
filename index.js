@@ -1,30 +1,38 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-const exphbs = require('express-handlebars');
 const session = require('express-session');
 const path = require('path');
 const MongoStore = require('connect-mongo');
-
+const Product = require('./models/Product');
 const Cafe = require('./models/Cafe');
-const User = require('./models/User'); // Подключение модели пользователя
-const orderRoutes = require('./routes/orderRoutes');
-const adminRoutes = require('./routes/adminRoutes');
+const User = require('./models/User');
+const Order = require('./models/Order');
+const orderRoutes = require('./routes/orderRoutes'); // Маршруты для заказов
+const adminCafeRoutes = require('./routes/adminCafeRoutes'); // Импорт маршрутов
+const { engine } = require('express-handlebars');
+const { allowInsecurePrototypeAccess } = require('@handlebars/allow-prototype-access');
+const Handlebars = require('handlebars');
 
-// Инициализация приложения
-const app = express();
+const verifyRoutes = require('./routes/verify');
+const app = express(); // Инициализация приложения
+const authRoutes = require('./routes/auth'); // Импорт маршрутов авторизации
 
 // Строка подключения к MongoDB
 const mongoURL = 'mongodb+srv://Gleb:0171862901gB@cluster0.sdcfbnm.mongodb.net/coffee_shop?retryWrites=true&w=majority';
 
 // Подключение к MongoDB
-mongoose.connect(mongoURL, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose
+    .connect(mongoURL)
     .then(() => console.log('Успешно подключено к MongoDB'))
-    .catch((err) => console.error('Ошибка подключения к MongoDB:', err.message));
+    .catch(err => {
+        console.error('Ошибка подключения к MongoDB:', err.message);
+        process.exit(1);
+    });
 
 // Отслеживание событий подключения
 mongoose.connection.on('connected', () => console.log('Mongoose: подключен к MongoDB'));
-mongoose.connection.on('error', (err) => console.error('Mongoose: ошибка подключения к MongoDB:', err.message));
+mongoose.connection.on('error', err => console.error('Mongoose: ошибка подключения к MongoDB:', err.message));
 mongoose.connection.on('disconnected', () => console.log('Mongoose: соединение с MongoDB разорвано'));
 
 // Закрытие соединения при завершении работы приложения
@@ -35,59 +43,105 @@ process.on('SIGINT', async () => {
 });
 
 // Настройка Handlebars
-app.engine('hbs', exphbs.engine({
+app.engine('hbs', engine({
     extname: 'hbs',
     defaultLayout: 'main',
     layoutsDir: path.join(__dirname, 'views', 'layouts'),
+    handlebars: allowInsecurePrototypeAccess(Handlebars) // Разрешение доступа к прототипам
 }));
 app.set('view engine', 'hbs');
 
 // Middleware
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(session({
-    secret: 'aefc3b1e5f1c2ed9a0b3d4e9f7a1234b56789abcdef1234567890abcdef1234',
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-        mongoUrl: mongoURL, // Использование MongoDB для хранения сессий
-        ttl: 24 * 60 * 60 // Время жизни сессии 24 часа
-    }),
-    cookie: {
-        maxAge: 24 * 60 * 60 * 1000, // Время жизни cookies (24 часа)
-        httpOnly: true,
-        secure: false // Установите true, если используете HTTPS
-    }
-}));
+// Настройка сессий
 
-// Middleware для передачи информации о пользователе в шаблоны
+app.use(
+    session({
+        secret: 'aefc3b1e5f1c2ed9a0b3d4e9f7a1234b56789abcdef1234567890abcdef1234', // Уникальный секретный ключ
+        resave: false, // Не сохранять сессию, если она не изменялась
+        saveUninitialized: false, // Не сохранять пустые сессии
+        store: MongoStore.create({ mongoUrl: 'mongodb+srv://Gleb:0171862901gB@cluster0.sdcfbnm.mongodb.net/coffee_shop?retryWrites=true&w=majority' }), // Хранилище для сессий
+        cookie: {
+            maxAge: 24 * 60 * 60 * 1000, // 24 часа
+            httpOnly: true, // Запрет JavaScript доступ к cookies
+            secure: false, // Установите true при использовании HTTPS
+        },
+    })
+);
+// Middleware для передачи данных о пользователе в шаблоны
 app.use((req, res, next) => {
-    res.locals.user = req.session.user || null;
+    res.locals.user = req.session.user || null; // Доступ к данным пользователя в шаблонах
     next();
 });
-
+app.use((req, res, next) => {
+    console.log(`Запрос: ${req.method} ${req.url}`);
+    next();
+});
 // Middleware для проверки авторизации
 function isAuthenticated(req, res, next) {
-    if (req.session.user) return next();
-    res.redirect('/login');
+    if (req.session.user) {
+        return next();
+    }
+    res.redirect('/auth/login');
 }
 
+// Middleware для проверки прав администратора
 function isAdmin(req, res, next) {
-    if (req.session.user && req.session.user.isAdmin) return next();
-    res.redirect('/login');
+    if (req.session.user && req.session.user.isAdmin) {
+        return next();
+    }
+    res.redirect('/auth/login');
 }
 
-// Маршруты
+// Проверка подключения моделей
+if (!Cafe || !Product || !User || !Order) {
+    console.error('Ошибка: одна или несколько моделей не подключены.');
+    process.exit(1);
+} else {
+    console.log('Все модели успешно подключены.');
+}
+
+// Маршрут главной страницы
 app.get('/', (req, res) => {
     res.render('home', { title: 'Добро пожаловать в нашу сеть кофеен!' });
 });
 
+// Маршрут получения списка кофеен
 app.get('/cafes', async (req, res) => {
     try {
-        const cafes = await Cafe.find();
+        const cafes = await Cafe.find().populate('products.product'); // Загрузка кофеен с продуктами
+
+        if (!cafes || cafes.length === 0) {
+            console.warn('Кофейни не найдены');
+        } else {
+            console.log('Кофейни:', cafes); // Логирование данных
+        }
+
         res.render('cafes', { title: 'Наши кофейни', cafes });
     } catch (error) {
         console.error('Ошибка при получении кофеен:', error.message);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
+// Маршрут получения списка заказов (с учётом авторизации)
+app.get('/orders', isAuthenticated, async (req, res) => {
+    try {
+        const userId = req.session.user.id; // Получаем ID текущего пользователя
+
+        // Фильтруем заказы по пользователю
+        const orders = await Order.find({ user: userId })
+            .populate('cafe') // Подгружаем данные кофейни
+            .populate('products.product'); // Подгружаем данные продуктов (если нужно)
+
+        // Логируем заказы для проверки
+        console.log(`Заказы пользователя ${userId}:`, JSON.stringify(orders, null, 2));
+
+        res.render('orders', { title: 'Ваши заказы', orders });
+    } catch (error) {
+        console.error('Ошибка при получении заказов:', error.message);
         res.status(500).send('Ошибка сервера');
     }
 });
@@ -101,18 +155,16 @@ app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
 
-        // Проверка на уникальность пользователя
         const existingUser = await User.findOne({ username });
         if (existingUser) {
             return res.render('register', { title: 'Регистрация', error: 'Пользователь уже существует' });
         }
 
-        // Создание и сохранение нового пользователя
         const user = new User({ username, password });
         await user.save();
-        console.log('Пользователь успешно зарегистрирован:', username);
 
-        res.redirect('/login');
+        console.log('Пользователь успешно зарегистрирован:', username);
+        res.redirect('/auth/login');
     } catch (error) {
         console.error('Ошибка при регистрации пользователя:', error.message);
         res.render('register', { title: 'Регистрация', error: 'Ошибка при регистрации' });
@@ -120,31 +172,11 @@ app.post('/register', async (req, res) => {
 });
 
 // Вход
-app.get('/login', (req, res) => {
-    res.render('login', { title: 'Вход' });
-});
 
-app.post('/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-
-        // Поиск пользователя в базе данных
-        const user = await User.findOne({ username });
-        if (user && await user.comparePassword(password)) {
-            req.session.user = { id: user._id, username: user.username, isAdmin: user.isAdmin };
-            return res.redirect(user.isAdmin ? '/admin' : '/cafes');
-        }
-
-        res.render('login', { title: 'Вход', error: 'Неверные учетные данные' });
-    } catch (error) {
-        console.error('Ошибка при входе:', error.message);
-        res.render('login', { title: 'Вход', error: 'Ошибка сервера' });
-    }
-});
 
 // Выход
 app.get('/logout', (req, res) => {
-    req.session.destroy(() => res.redirect('/login'));
+    req.session.destroy(() => res.redirect('/auth/login'));
 });
 
 // Админ-панель
@@ -172,8 +204,9 @@ app.post('/admin/add-cafe', isAdmin, async (req, res) => {
 
 // Подключение маршрутов
 app.use('/', orderRoutes);
-app.use('/', adminRoutes);
-
+app.use('/', adminCafeRoutes); // Подключение маршрутов
+app.use('/auth', authRoutes); // Подключение маршрутов с префиксом /auth
+app.use('/verify', verifyRoutes);
 // Запуск сервера
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

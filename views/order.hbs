@@ -1,11 +1,124 @@
-<h2>Сделать заказ</h2>
-<p>Выберите кофейню, чтобы увидеть доступные рецепты:</p>
-<ul>
-    {{#each cafes}}
-    <li>
-        <h3>{{this.name}}</h3>
-        <p>Адрес: {{this.address}}</p>
-        <a href="/order/{{this._id}}">Посмотреть доступные рецепты</a>
-    </li>
-    {{/each}}
-</ul>
+<h1>{{title}}</h1>
+<form id="cafeForm">
+    <label for="cafe">Выберите кофейню:</label>
+    <select name="cafeId" id="cafe">
+        <option value="">-- Выберите кофейню --</option>
+        {{#each cafes}}
+        <option value="{{this._id}}">{{this.name}}</option>
+        {{/each}}
+    </select>
+</form>
+
+<div id="waitTimeContainer" style="display:none;">
+    <p>Примерное время ожидания: <span id="waitTime">0</span> минут.</p>
+</div>
+
+<div id="recipesContainer" style="display:none;">
+    <h2>Выберите кофе:</h2>
+    <form id="orderForm">
+        <select name="recipeId" id="recipe">
+            <option value="">-- Выберите кофе --</option>
+        </select>
+        <label for="quantity">Количество:</label>
+        <input type="number" name="quantity" id="quantity" min="1" value="1" />
+        <button type="submit">Заказать</button>
+    </form>
+</div>
+
+<script>
+    document.getElementById('cafe').addEventListener('change', function () {
+        const cafeId = this.value; // Получаем значение выбранной кофейни
+        const recipesSelect = document.getElementById('recipe');
+        const waitTimeContainer = document.getElementById('waitTimeContainer');
+        const waitTimeElement = document.getElementById('waitTime');
+
+        recipesSelect.innerHTML = '<option value="">-- Выберите кофе --</option>'; // Сброс списка рецептов
+        waitTimeContainer.style.display = 'none'; // Скрываем контейнер времени ожидания
+
+        if (cafeId) {
+            // Получаем время ожидания для выбранной кофейни
+            fetch('/cafe/wait-time', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cafeId }) // Передаём ID кофейни
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Ошибка сети');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    waitTimeElement.textContent = data.estimatedWaitTime; // Отображаем рассчитанное время ожидания
+                    waitTimeContainer.style.display = 'block'; // Показываем контейнер времени ожидания
+                })
+                .catch(error => {
+                    console.error('Ошибка при расчёте времени ожидания:', error.message);
+                    alert('Ошибка при расчёте времени ожидания: ' + error.message); // Сообщение об ошибке
+                });
+
+            // Загружаем список рецептов для выбранной кофейни
+            fetch('/order/recipes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cafeId }) // Передаём ID кофейни
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Ошибка сети');
+                    }
+                    return response.json();
+                })
+                .then(recipes => {
+                    recipes.forEach(recipe => {
+                        const option = document.createElement('option');
+                        option.value = recipe._id;
+                        option.textContent = recipe.name;
+                        recipesSelect.appendChild(option);
+                    });
+                    document.getElementById('recipesContainer').style.display = 'block'; // Показываем контейнер с рецептами
+                })
+                .catch(error => {
+                    console.error('Ошибка при загрузке рецептов:', error.message);
+                    alert('Ошибка при загрузке рецептов: ' + error.message); // Сообщение об ошибке
+                });
+        } else {
+            document.getElementById('recipesContainer').style.display = 'none'; // Скрываем контейнер с рецептами, если кофейня не выбрана
+        }
+    });
+
+    // Обработка отправки формы заказа
+    document.getElementById('orderForm').addEventListener('submit', function (event) {
+        event.preventDefault(); // Предотвращаем стандартное поведение формы
+
+        const cafeId = document.getElementById('cafe').value; // Получаем значение кофейни
+        const recipeId = document.getElementById('recipe').value; // Получаем значение рецепта
+        const quantity = document.getElementById('quantity').value; // Получаем количество
+
+        console.log('Отправляем данные:', { cafeId, recipeId, quantity }); // Логируем данные
+
+        fetch('/order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ cafeId, recipeId, quantity }) // Преобразуем данные в JSON
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка сети');
+                }
+                return response.text(); // Или .json() в зависимости от вашего сервера
+            })
+            .then(data => {
+                console.log('Ответ от сервера:', data); // Логируем ответ сервера
+                alert('Заказ успешно создан!'); // Уведомление об успешном заказе
+                window.location.href = '/orders'; // Перенаправление на страницу заказов
+            })
+            .catch(error => console.error('Ошибка при отправке заказа:', error));
+    });
+</script>

@@ -1,0 +1,46 @@
+<h1>{{title}}</h1>
+
+{{#if orders.length}}
+<table border="1" cellpadding="5" cellspacing="0">
+    <thead>
+        <tr>
+            <th>ID заказа</th>
+            <th>Кофе</th>
+            <th>Количество</th>
+            <th>Статус готовности</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each orders}}
+        <tr>
+            <td>{{this._id}}</td>
+            <td>
+                {{#if this.products.length}}
+                {{#each this.products}}
+                {{this.product.name}}<br>
+                {{/each}}
+                {{else}}
+                Продукты не указаны
+                {{/if}}
+            </td>
+            <td>
+                {{#each this.products}}
+                {{this.quantity}}<br>
+                {{/each}}
+            </td>
+            <td>{{#if this.isReady}}Готов{{else}}Ожидает{{/if}}</td>
+            <td>
+                <form method="POST" action="/admin/order/{{this._id}}/ready">
+                    <input type="hidden" name="isReady" value="{{#if this.isReady}}false{{else}}true{{/if}}">
+                    <button type="submit">{{#if this.isReady}}Отметить как ожидающий{{else}}Отметить как
+                        готов{{/if}}</button>
+                </form>
+            </td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
+{{else}}
+<p>Нет заказов для этой кофейни.</p>
+{{/if}}

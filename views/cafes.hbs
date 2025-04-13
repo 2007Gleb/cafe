@@ -1,6 +1,12 @@
-<h2>Список кофеен</h2>
+<h1>{{title}}</h1>
 <ul>
     {{#each cafes}}
-    <li>{{this.name}} - {{this.address}}</li>
+    <li>
+        <h2>{{this.name}}</h2>
+        <p>{{this.address}}</p>
+
+    </li>
+    {{else}}
+    <li>Кофейни не найдены</li>
     {{/each}}
 </ul>

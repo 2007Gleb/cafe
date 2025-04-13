@@ -14,7 +14,10 @@
         <nav>
             <a href="/">Главная</a>
             <a href="/cafes">Наши кофейни</a>
-            <a href="/order">Заказать кофе</a> <!-- Новая ссылка на страницу заказа -->
+            <a href="/order">Заказать кофе</a>
+            {{#if user}}
+            <a href="/orders">История заказов</a>
+            {{/if}} <!-- Новая ссылка на страницу заказа -->
             {{#if user}}
             {{#if user.isAdmin}}
             <a href="/admin">Админ-панель</a>
@@ -22,7 +25,7 @@
             <a href="/logout">Выйти</a>
             {{else}}
             <a href="/register">Регистрация</a>
-            <a href="/login">Вход</a>
+            <a href="auth/login">Вход</a>
             {{/if}}
         </nav>
     </header>

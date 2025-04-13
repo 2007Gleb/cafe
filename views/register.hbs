@@ -1,13 +1,30 @@
 <h2>Регистрация</h2>
+
 {{#if error}}
 <p style="color: red;">{{error}}</p>
 {{/if}}
-<form action="/register" method="POST">
-    <label for="username">Имя пользователя:</label>
-    <input type="text" id="username" name="username" required>
 
-    <label for="password">Пароль:</label>
-    <input type="password" id="password" name="password" required>
+{{#if message}}
+<p style="color: green;">{{message}}</p>
+{{/if}}
 
-    <button type="submit">Зарегистрироваться</button>
+<form action="/auth/register" method="POST">
+    <div>
+        <label for="username">Имя пользователя:</label>
+        <input type="text" id="username" name="username" required>
+    </div>
+
+    <div>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+    </div>
+
+    <div>
+        <label for="password">Пароль:</label>
+        <input type="password" id="password" name="password" required>
+    </div>
+
+    <div>
+        <button type="submit">Зарегистрироваться</button>
+    </div>
 </form>

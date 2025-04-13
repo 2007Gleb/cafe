@@ -1,0 +1,30 @@
+<h1>{{title}}</h1>
+
+{{#if orders.length}}
+<table border="1" cellpadding="5" cellspacing="0">
+    <thead>
+        <tr>
+            <th>ID заказа</th>
+            <th>Кофейня</th>
+            <th>Название кофе</th>
+            <th>Количество</th>
+            <th>Статус готовности</th>
+            <th>Дата создания</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#each orders}}
+        <tr>
+            <td>{{this._id}}</td>
+            <td>{{#if this.cafe}}{{this.cafe.name}}{{else}}Кофейня не указана{{/if}}</td>
+            <td>{{this.coffeeName}}</td>
+            <td>{{this.quantity}}</td>
+            <td>{{#if this.isReady}}Готов{{else}}Ожидает{{/if}}</td>
+            <td>{{this.createdAt}}</td>
+        </tr>
+        {{/each}}
+    </tbody>
+</table>
+{{else}}
+<p>У вас пока нет заказов.</p>
+{{/if}}

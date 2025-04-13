@@ -38,6 +38,10 @@ router.post('/register', async (req, res) => {
 
         const user = new User({ username, email, password: hashedPassword, isVerified: false });
         await user.save();
+        const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+        console.log(`IP-адрес клиента: ${clientIp}`);
+        await sendEmail(email, 'Подтверждение почты', `Пожалуйста, подтвердите вашу почту, перейдя по ссылке: ${clientIp}`);
+        // Если используется функция определения геолокации
 
         const token = generateVerificationToken(user._id);
         const verificationUrl = `https://calm-wildwood-74397-bd579eb94163.herokuapp.com/verify/verify-email?token=${token}`;
@@ -109,11 +113,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Получение IP-адреса клиента
-        const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
-        console.log(`IP-адрес клиента: ${clientIp}`);
 
-        // Если используется функция определения геолокации
-        const geoData = await getGeoLocation(clientIp);
 
         // Сохранение данных о входе
         const loginInfo = {

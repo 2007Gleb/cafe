@@ -3,11 +3,29 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User'); // Убедитесь, что путь к модели User корректный
 const sendEmail = require('../utils/mailer'); // Убедитесь, что путь к модулю mailer корректный
 const { generateVerificationToken } = require('../utils/token'); // Убедитесь, что путь к модулю token корректный
-
+const LoginHistory = require('../models/LoginHistory'); // Новая модель для хранения истории входов
+const axios = require('axios'); // Для получения геолокации через API
 const router = express.Router(); // Создаём объект router
 router.get('/login', (req, res) => {
     res.render('login', { title: 'Вход' });
 });
+async function getGeoLocation(ip) {
+    try {
+        const response = await axios.get(`http://ip-api.com/json/${ip}`);
+        return response.data; // Возвращает данные о местоположении
+    } catch (error) {
+        console.error('Ошибка получения геолокации:', error.message);
+        return null;
+    }
+}
+const sendEmail = require('../utils/mailer'); // Подключите ваш модуль для отправки email
+
+// Отправка уведомления
+await sendEmail(
+    'bobkovgleb38@gmail.com',
+    'Новый вход в систему',
+    `Пользователь вошел в систему:\nIP: ${clientIp}\nМестоположение: ${geoData ? `${geoData.city}, ${geoData.country}` : 'Неизвестно'}`
+);
 // Регистрация пользователя
 router.post('/register', async (req, res) => {
     try {
@@ -83,30 +101,42 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Поиск пользователя по email
-        console.log('Проверка email:', email);
+        // Поиск пользователя
         const user = await User.findOne({ email });
         if (!user) {
-            console.log('Пользователь не найден');
             return res.render('login', { title: 'Вход', error: 'Неверные учетные данные' });
         }
 
         // Проверка пароля
-        const isMatch = await user.comparePassword(password);
+        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            console.log('Неверный пароль');
             return res.render('login', { title: 'Вход', error: 'Неверные учетные данные' });
         }
 
         // Проверка подтверждения почты
         if (!user.isVerified) {
-            console.log('Почта не подтверждена');
             return res.render('login', { title: 'Вход', error: 'Пожалуйста, подтвердите вашу почту перед входом.' });
         }
 
-        // Если всё верно, создаём сессию
+        // Получение IP и геолокации
+        const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const geoData = await getGeoLocation(clientIp);
+
+        // Сохранение данных о входе
+        const loginInfo = {
+            userId: user._id,
+            ip: clientIp,
+            location: geoData ? `${geoData.city}, ${geoData.country}` : 'Неизвестно',
+            time: new Date(),
+        };
+
+        // Сохранение в базу данных
+        await LoginHistory.create(loginInfo);
+
+        console.log('Информация о входе:', loginInfo);
+
+        // Создание сессии
         req.session.user = { id: user._id, username: user.username, isAdmin: user.isAdmin };
-        console.log('Авторизация успешна');
         res.redirect(user.isAdmin ? '/admin' : '/cafes');
     } catch (error) {
         console.error('Ошибка при входе пользователя:', error.message);

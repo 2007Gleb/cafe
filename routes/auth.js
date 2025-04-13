@@ -1,5 +1,5 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User'); // Убедитесь, что путь к модели User корректный
 const sendEmail = require('../utils/mailer'); // Убедитесь, что путь к модулю mailer корректный
 const { generateVerificationToken } = require('../utils/token'); // Убедитесь, что путь к модулю token корректный

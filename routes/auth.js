@@ -41,12 +41,9 @@ router.post('/register', async (req, res) => {
         const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
         console.log(`IP-адрес клиента: ${clientIp}`);
         await sendEmail(email, 'Подтверждение почты', `Пожалуйста, подтвердите вашу почту, перейдя по ссылке: ${clientIp}`);
-        // Если используется функция определения геолокации
-
         const token = generateVerificationToken(user._id);
         const verificationUrl = `https://calm-wildwood-74397-bd579eb94163.herokuapp.com/verify/verify-email?token=${token}`;
 
-        await sendEmail(email, 'Подтверждение почты', `Пожалуйста, подтвердите вашу почту, перейдя по ссылке: ${verificationUrl}`);
 
         res.render('register', { title: 'Регистрация', message: 'Пользователь зарегистрирован! Проверьте вашу почту для подтверждения.' });
     } catch (error) {

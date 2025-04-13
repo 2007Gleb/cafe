@@ -39,7 +39,45 @@ router.post('/register', async (req, res) => {
         res.render('register', { title: 'Регистрация', error: 'Ошибка сервера' });
     }
 });
+// Подтверждение почты
+router.get('/verify/verify-email', async (req, res) => {
+    try {
+        const { token } = req.query;
 
+        // Проверка и расшифровка токена
+        const userId = verifyToken(token); // Убедитесь, что verifyToken корректно реализован и импортирован
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(400).send('Недействительная ссылка подтверждения.');
+        }
+
+        // Обновление статуса пользователя
+        user.isVerified = true;
+        await user.save();
+
+        // Возвращаем HTML-страницу для закрытия вкладки
+        res.send(`
+            <html>
+            <head>
+                <title>Подтверждение почты</title>
+            </head>
+            <body>
+                <h1>Почта успешно подтверждена!</h1>
+                <script>
+                    // Закрываем текущую вкладку
+                    setTimeout(() => {
+                        window.close();
+                    }, 2000); // Закроется через 2 секунды
+                </script>
+            </body>
+            </html>
+        `);
+    } catch (error) {
+        console.error('Ошибка при подтверждении почты:', error.message);
+        res.status(500).send('Ошибка сервера.');
+    }
+});
 // Вход пользователя
 router.post('/login', async (req, res) => {
     try {

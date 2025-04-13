@@ -28,7 +28,7 @@ router.post('/register', async (req, res) => {
 
         // Генерация токена
         const token = generateVerificationToken(user._id);
-        const verificationUrl = `http://localhost:3000/verify/verify-email?token=${token}`;
+        const verificationUrl = `https://calm-wildwood-74397-bd579eb94163.herokuapp.com/verify/verify-email?token=${token}`;
 
         // Отправка письма
         await sendEmail(email, 'Подтверждение почты', `Пожалуйста, подтвердите вашу почту, перейдя по ссылке: ${verificationUrl}`);

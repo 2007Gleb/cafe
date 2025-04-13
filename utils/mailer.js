@@ -25,5 +25,18 @@ const sendEmail = async (to, subject, text) => {
         console.error('Error sending email:', error);
     }
 };
-
+async function sendEmail(to, subject, text) {
+    try {
+        const info = await transporter.sendMail({
+            from: 'ваш_email@gmail.com', // Адрес отправителя
+            to, // Адрес получателя
+            subject, // Тема письма
+            text, // Текст письма
+        });
+        console.log('Email успешно отправлен:', info.response);
+    } catch (error) {
+        console.error('Ошибка при отправке email:', error.message);
+        throw error; // Пробрасываем ошибку, чтобы обработать её в вызывающем коде
+    }
+}
 module.exports = sendEmail;

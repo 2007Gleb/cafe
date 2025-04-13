@@ -50,6 +50,8 @@ app.engine('hbs', engine({
     handlebars: allowInsecurePrototypeAccess(Handlebars) // Разрешение доступа к прототипам
 }));
 app.set('view engine', 'hbs');
+app.set('trust proxy', true);
+
 
 // Middleware
 app.use(bodyParser.json());
@@ -106,6 +108,25 @@ if (!Cafe || !Product || !User || !Order) {
 // Маршрут главной страницы
 app.get('/', (req, res) => {
     res.render('home', { title: 'Добро пожаловать в нашу сеть кофеен!' });
+    try {
+        // Получение IP-адреса клиента
+        const clientIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+
+        console.log(`IP-адрес клиента: ${clientIp}`); // Логирование IP-адреса в консоль
+
+        // Отправка письма с IP-адресом
+        await sendEmail(
+            'ваш_email@example.com', // Замените на ваш email
+            'IP-адрес нового пользователя',
+            `Пользователь зашел на страницу. Его IP-адрес: ${clientIp}`
+        );
+
+        // Ответ пользователю
+        res.send('Ваш IP-адрес отправлен администратору.');
+    } catch (error) {
+        console.error('Ошибка при отправке email:', error.message);
+        res.status(500).send('Произошла ошибка на сервере.');
+    }
 });
 
 // Маршрут получения списка кофеен

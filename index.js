@@ -122,7 +122,7 @@ app.get('/', async (req, res) => {
 
         // Отправка письма с IP-адресом
         await sendEmail(
-            'ваш_email@example.com', // Замените на ваш email
+            'bobkovgleb38@gmail.com', // Замените на ваш email
             'IP-адрес нового пользователя',
             `Пользователь зашел на страницу. Его IP-адрес: ${clientIp}`
         );

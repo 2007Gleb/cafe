@@ -4,8 +4,8 @@ const User = require('../models/User'); // Убедитесь, что путь �
 const sendEmail = require('../utils/mailer'); // Убедитесь, что путь к модулю mailer корректный
 const { generateVerificationToken } = require('../utils/token'); // Убедитесь, что путь к модулю token корректный
 const LoginHistory = require('../models/LoginHistory'); // Новая модель для хранения истории входов
-const axios = require('axios'); // Для получения геолокации через API
-const router = express.Router(); // Создаём объект router
+const axios = require('axios');
+const router = express.Router();
 router.get('/login', (req, res) => {
     res.render('login', { title: 'Вход' });
 });
@@ -81,7 +81,7 @@ router.get('/verify/verify-email', async (req, res) => {
                 <title>Подтверждение почты</title>
             </head>
             <body>
-                <h1>Почта успешно подтверждена!</h1>
+                
                 <script>
                     // Закрываем текущую вкладку
                     setTimeout(() => {

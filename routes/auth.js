@@ -91,23 +91,33 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // Поиск пользователя
         const user = await User.findOne({ email });
         if (!user) {
             return res.render('login', { title: 'Вход', error: 'Неверные учетные данные' });
         }
 
+        // Проверка пароля
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.render('login', { title: 'Вход', error: 'Неверные учетные данные' });
         }
 
+        // Проверка подтверждения почты
         if (!user.isVerified) {
             return res.render('login', { title: 'Вход', error: 'Пожалуйста, подтвердите вашу почту перед входом.' });
         }
 
+        // Получение IP-адреса клиента
         const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+
+        // Лог IP-адреса для отладки
+        console.log(`IP-адрес клиента: ${clientIp}`);
+
+        // Если используется функция определения геолокации
         const geoData = await getGeoLocation(clientIp);
 
+        // Сохранение данных о входе
         const loginInfo = {
             userId: user._id,
             ip: clientIp,
@@ -115,10 +125,11 @@ router.post('/login', async (req, res) => {
             time: new Date(),
         };
 
+        // Сохранение записи о входе в базу данных
         await LoginHistory.create(loginInfo);
-
         console.log('Информация о входе:', loginInfo);
 
+        // Создание сессии
         req.session.user = { id: user._id, username: user.username, isAdmin: user.isAdmin };
         res.redirect(user.isAdmin ? '/admin' : '/cafes');
     } catch (error) {

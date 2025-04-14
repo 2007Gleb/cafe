@@ -1,2 +1,22 @@
-<h2>Добро пожаловать, <%= username %>!</h2>
-<p>Посетите наши кофейни и наслаждайтесь лучшим кофе!</p>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+</head>
+
+<body>
+    {{#if welcomeMessage}}
+    <div class="welcome-message">
+        <h1>{{welcomeMessage}}</h1>
+    </div>
+    {{/if}}
+
+    <div class="content">
+        <p>Содержимое главной страницы...</p>
+    </div>
+</body>
+
+</html>

@@ -13,11 +13,11 @@ router.get('/order', isAuthenticated, async (req, res) => {
 
         // Создаем безопасные объекты кофеен
         const safeCafes = cafes.map(cafe => ({
-            _id: cafe._id.toString(), // Преобразуем в строку
-            name: cafe.name,
+            _id: cafe?._id?.toString() || '', // Защита от undefined
+            name: cafe?.name || 'Неизвестная кофейня',
             products: cafe.products.map(product => ({
-                product: product.product._id.toString(), // Преобразуем в строку
-                stock: product.stock,
+                product: product.product?._id?.toString() || '', // Защита от undefined
+                stock: product?.stock || 0,
             })),
         }));
 
@@ -48,7 +48,9 @@ router.post('/order/recipes', async (req, res) => {
 
         const availableRecipes = recipes.filter(recipe =>
             recipe.ingredients.every(ingredient => {
-                const productInCafe = cafe.products.find(p => p.product.equals(ingredient.product));
+                const productInCafe = cafe.products.find(p =>
+                    p.product && p.product.equals(ingredient.product)
+                );
                 return productInCafe && productInCafe.stock >= ingredient.amount;
             })
         );
@@ -69,14 +71,12 @@ router.post('/cafe/wait-time', async (req, res) => {
     }
 
     try {
-        // Считаем количество заказов со статусом "не готов"
         const pendingOrdersCount = await Order.countDocuments({
             cafe: cafeId,
             isReady: false,
         });
 
-        // Рассчитываем время ожидания (например, 5 минут на один заказ)
-        const estimatedWaitTime = pendingOrdersCount * 5; // Время в минутах
+        const estimatedWaitTime = pendingOrdersCount * 5;
 
         res.json({ estimatedWaitTime });
     } catch (error) {
@@ -87,11 +87,10 @@ router.post('/cafe/wait-time', async (req, res) => {
 
 // Обработка заказа
 router.post('/order', isAuthenticated, async (req, res) => {
-    const { recipeId, cafeId, quantity } = req.body; // Получаем данные из тела запроса
-    const userId = req.session.user.id; // Получаем ID авторизованного пользователя
+    const { recipeId, cafeId, quantity } = req.body;
+    const userId = req.session.user.id;
 
     try {
-        // Найти рецепт кофе по его ID
         const recipe = await Recipe.findById(recipeId).populate('ingredients.product');
         const cafe = await Cafe.findById(cafeId).populate('products.product');
 
@@ -103,14 +102,15 @@ router.post('/order', isAuthenticated, async (req, res) => {
             return res.status(404).send('Рецепт не найден');
         }
 
-        // Проверка наличия необходимых ингредиентов в кофейне
         for (const ingredient of recipe.ingredients) {
-            const productInCafe = cafe.products.find(p => p.product.equals(ingredient.product));
+            const productInCafe = cafe.products.find(p =>
+                p.product && p.product.equals(ingredient.product)
+            );
 
             if (productInCafe) {
                 const totalRequired = ingredient.amount * quantity;
                 if (productInCafe.stock >= totalRequired) {
-                    productInCafe.stock -= totalRequired; // Обновляем остаток продукта
+                    productInCafe.stock -= totalRequired;
                 } else {
                     return res.status(400).send('Недостаточно продуктов для выполнения заказа');
                 }
@@ -119,9 +119,8 @@ router.post('/order', isAuthenticated, async (req, res) => {
             }
         }
 
-        await cafe.save(); // Сохраняем изменения в кофейне
+        await cafe.save();
 
-        // Создаем новый заказ
         const newOrder = new Order({
             cafe: cafeId,
             user: userId,
@@ -129,17 +128,17 @@ router.post('/order', isAuthenticated, async (req, res) => {
                 product: ingredient.product,
                 quantity: ingredient.amount * quantity,
             })),
-            coffeeName: recipe.name, // Название кофе
-            quantity: quantity, // Количество порций
-            status: 'Создан', // Устанавливаем статус заказа
+            coffeeName: recipe.name,
+            quantity: quantity,
+            status: 'Создан',
             createdAt: new Date(),
         });
 
-        await newOrder.save(); // Сохраняем заказ в базе данных
+        await newOrder.save();
 
         console.log('Новый заказ создан:', newOrder);
 
-        res.redirect('/orders'); // Перенаправляем пользователя на страницу заказов
+        res.redirect('/orders');
     } catch (error) {
         console.error('Ошибка при создании заказа:', error.message);
         res.status(500).send('Ошибка сервера');

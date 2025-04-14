@@ -105,9 +105,20 @@ if (!Cafe || !Product || !User || !Order) {
 
 // Маршрут главной страницы
 app.get('/', (req, res) => {
-    res.render('home', { title: 'Добро пожаловать в нашу сеть кофеен!' });
-});
+    const user = req.session.user; // Данные о пользователе из сессии
 
+    if (user) {
+        // Проверяем, был ли пользователь уже приветствован
+        if (!req.session.welcomed) {
+            req.session.welcomed = true; // Устанавливаем флаг приветствия
+            res.render('home', { title: 'Главная', welcomeMessage: `Добро пожаловать, ${user.username}!` });
+        } else {
+            res.render('home', { title: 'Главная' }); // Обычный контент
+        }
+    } else {
+        res.render('home', { title: 'Главная' }); // Обычный контент для гостей
+    }
+});
 // Маршрут получения списка кофеен
 app.get('/cafes', async (req, res) => {
     try {
@@ -125,6 +136,7 @@ app.get('/cafes', async (req, res) => {
         res.status(500).send('Ошибка сервера');
     }
 });
+
 
 // Маршрут получения списка заказов (с учётом авторизации)
 app.get('/orders', isAuthenticated, async (req, res) => {

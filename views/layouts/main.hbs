@@ -6,9 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{title}}</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/loading.css"> <!-- Подключаем CSS -->
+
 </head>
 
 <body>
+    <div id="loading-overlay">
+        <div id="loading-spinner">
+            <img src="/images/1.svg" alt="Загрузка..."> <!-- Вращающееся изображение -->
+        </div>
+    </div>
     <header>
         <h1>Сеть кофеен</h1>
         <nav>
@@ -32,6 +39,8 @@
     <main>
         {{{body}}}
     </main>
+    <script src="/loading.js"></script> <!-- Подключаем JS -->
+
 </body>
 
 </html>
